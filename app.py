@@ -17,7 +17,7 @@ st.set_page_config(page_title="JC Simulator", layout="wide")
 
 st.title("Simulador del Modelo de Jaynes-Cummings")
 st.caption(
-    "Developed by Leonardi Hernández Sánchez"
+    "JC Simulator v1.0 • Developed by Leonardi Hernández Sánchez • 2026"
 )
 
 with st.expander("Descripción del modelo físico"):
