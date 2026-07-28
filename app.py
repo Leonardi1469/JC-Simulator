@@ -1,36 +1,82 @@
 # ============================================================
-# 1. IMPORTACIÓN DE LIBRERÍAS
+# JC SIMULATOR
+# ============================================================
+#
+# Simulador interactivo del modelo de Jaynes-Cummings
+#
+# Tesis de Licenciatura
+# Ingeniería en Desarrollo y Tecnologías de Software
+#
+# Autores:
+# Leonardi Hernández Sánchez
+# Emily Andrea Franco Escudero
+#
+# 2026
+# ============================================================
+
+
+# ============================================================
+# 1. IMPORTACIÓN DE BIBLIOTECAS
 # ============================================================
 
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-from qutip import *
+
 from io import BytesIO
 
+from qutip import (
+    basis,
+    coherent,
+    destroy,
+    displace,
+    entropy_vn,
+    expect,
+    fock,
+    ket2dm,
+    qeye,
+    sesolve,
+    sigmam,
+    sigmap,
+    sigmaz,
+    squeeze,
+    tensor,
+)
+
 
 # ============================================================
-# 2. CONFIGURACIÓN GENERAL DE LA APLICACIÓN
+# 2. CONFIGURACIÓN DE LA APLICACIÓN
 # ============================================================
 
-st.set_page_config(page_title="JC Simulator", layout="wide")
+st.set_page_config(
+    page_title="JC Simulator",
+    layout="wide",
+)
 
 st.title("Simulador del Modelo de Jaynes-Cummings")
+
 st.caption(
-    "JC Simulator v1.0 • Developed by Leonardi Hernández Sánchez • 2026"
+    "JC Simulator v1.0 • "
+    "Developed by Leonardi Hernández Sánchez and "
+    "Emily Andrea Franco Escudero • 2026"
 )
 
 with st.expander("Descripción del modelo físico"):
 
     st.markdown(
         """
-El presente simulador resuelve la ecuación de Schrödinger para el modelo de Jaynes-Cummings, el cual describe la interacción
-entre un átomo de dos niveles y un único modo cuantizado del campo electromagnético dentro de una cavidad.
+El presente simulador resuelve la ecuación de Schrödinger para el
+modelo de Jaynes-Cummings, el cual describe la interacción entre un
+átomo de dos niveles y un único modo cuantizado del campo
+electromagnético dentro de una cavidad.
         """
     )
 
     st.markdown(
-        "El Hamiltoniano del sistema, en unidades donde $\hbar=1$, está dado por:"
+        r"""
+El Hamiltoniano del sistema, en unidades donde
+$\hbar=1$, está dado por:
+        """
     )
 
     st.latex(
@@ -48,11 +94,9 @@ entre un átomo de dos niveles y un único modo cuantizado del campo electromagn
         \right)
         """
     )
-    st.markdown(
-        """
-donde
-        """
-    )
+
+    st.markdown("donde:")
+
     st.markdown(
         r"""
 - $\omega_c$: frecuencia angular del modo de la cavidad.
@@ -61,26 +105,29 @@ donde
 
 - $g$: constante de acoplamiento entre el átomo y el campo.
 
-- $\hat{a}^{\dagger}$ y $\hat{a}$: operadores de creación y destrucción del campo cuantizado.
+- $\hat{a}^{\dagger}$ y $\hat{a}$: operadores de creación y
+  destrucción del campo cuantizado.
 
-- $\hat{\sigma}_z$, $\hat{\sigma}_{+}$ y $\hat{\sigma}_{-}$: operadores del sistema atómico de dos niveles.
+- $\hat{\sigma}_z$, $\hat{\sigma}_{+}$ y
+  $\hat{\sigma}_{-}$: operadores del sistema atómico de dos niveles.
         """
     )
 
     st.info(
-        "El simulador permite estudiar la dinámica temporal del sistema para "
-        "diversos estados iniciales del átomo y del campo, así como analizar "
-        "cantidades físicas de interés como las probabilidades atómicas, la "
-        "inversión atómica, el número promedio de fotones, la entropía de "
+        "El simulador permite estudiar la dinámica temporal del sistema "
+        "para diversos estados iniciales del átomo y del campo. También "
+        "permite analizar las probabilidades atómicas, la inversión "
+        "atómica, el número promedio de fotones, la entropía de "
         "von Neumann y el número total de excitaciones."
     )
 
+
+# ============================================================
+# 3. DEFINICIÓN DE LOS PARÁMETROS DE ENTRADA
+# ============================================================
+
 col_izq, col_der = st.columns([1, 2])
 
-
-# ============================================================
-# 3. PANEL IZQUIERDO: PARÁMETROS DE ENTRADA
-# ============================================================
 
 with col_izq:
 
@@ -88,15 +135,54 @@ with col_izq:
     # 3.1 Parámetros físicos del modelo
     # --------------------------------------------------------
 
-    st.header("Parámetros")
+    st.header("Parámetros del modelo")
 
-    wc = st.number_input("Frecuencia de la cavidad $\\omega_c$", value=1.0, step=0.01, format="%.3f")
-    wa = st.number_input("Frecuencia atómica $\\omega_{eg}$", value=1.0, step=0.01, format="%.3f")
-    g = st.number_input("Constante de acoplamiento $g$", value=1.0, step=0.01, format="%.3f")
+    wc = st.number_input(
+        "Frecuencia de la cavidad $\\omega_c$",
+        min_value=0.0,
+        value=1.0,
+        step=0.01,
+        format="%.3f",
+    )
 
-    N = st.slider("Dimensión del espacio de Fock $N$", 2, 100, 20)
-    tmax = st.number_input("Tiempo máximo $t_{\\max}$", value=20.0, step=0.1, format="%.2f")
-    Nt = st.number_input("Número de puntos temporales $N_t$", value=1000, step=100)
+    wa = st.number_input(
+        "Frecuencia atómica $\\omega_{eg}$",
+        min_value=0.0,
+        value=1.0,
+        step=0.01,
+        format="%.3f",
+    )
+
+    g = st.number_input(
+        "Constante de acoplamiento $g$",
+        min_value=0.0,
+        value=1.0,
+        step=0.01,
+        format="%.3f",
+    )
+
+    N = st.slider(
+        "Dimensión del espacio de Fock $N$",
+        min_value=2,
+        max_value=100,
+        value=20,
+        step=1,
+    )
+
+    tmax = st.number_input(
+        "Tiempo máximo $t_{\\max}$",
+        min_value=0.1,
+        value=20.0,
+        step=0.1,
+        format="%.2f",
+    )
+
+    Nt = st.number_input(
+        "Número de puntos temporales $N_t$",
+        min_value=100,
+        value=1000,
+        step=100,
+    )
 
     # --------------------------------------------------------
     # 3.2 Estado inicial del átomo
@@ -106,7 +192,11 @@ with col_izq:
 
     estado_atomo = st.radio(
         "Seleccione el estado atómico",
-        ["Excitado", "Base", "Superposición"]
+        options=[
+            "Excitado",
+            "Base",
+            "Superposición",
+        ],
     )
 
     theta = 0.0
@@ -116,29 +206,36 @@ with col_izq:
 
         theta = st.slider(
             "Ángulo polar $\\theta$",
-            0.0,
-            float(np.pi),
-            float(np.pi / 2)
+            min_value=0.0,
+            max_value=float(np.pi),
+            value=float(np.pi / 2),
         )
 
-        st.latex(rf"\theta = {theta/np.pi:.3f}\,\pi")
+        st.latex(
+            rf"\theta={theta / np.pi:.3f}\,\pi"
+        )
 
         phi = st.slider(
             "Ángulo azimutal $\\phi$",
-            0.0,
-            float(2 * np.pi),
-            0.0
+            min_value=0.0,
+            max_value=float(2 * np.pi),
+            value=0.0,
         )
 
-        st.latex(rf"\phi = {phi/np.pi:.3f}\,\pi")
+        st.latex(
+            rf"\phi={phi / np.pi:.3f}\,\pi"
+        )
+
+        st.markdown("Estado atómico seleccionado:")
 
         st.latex(
             rf"""
-            |\psi_a(0)\rangle =
-            {np.cos(theta/2):.3f}|e\rangle
+            |\psi_a(0)\rangle
+            =
+            {np.cos(theta / 2):.3f}|e\rangle
             +
             e^{{i({phi:.3f})}}
-            {np.sin(theta/2):.3f}|g\rangle
+            {np.sin(theta / 2):.3f}|g\rangle
             """
         )
 
@@ -150,7 +247,13 @@ with col_izq:
 
     estado_campo = st.radio(
         "Seleccione el estado del campo",
-        ["Vacío", "Fock", "Coherente", "Comprimido", "Coherente comprimido"]
+        options=[
+            "Vacío",
+            "Fock",
+            "Coherente",
+            "Comprimido",
+            "Coherente comprimido",
+        ],
     )
 
     n0 = 0
@@ -158,83 +261,115 @@ with col_izq:
     r = 0.5
 
     if estado_campo == "Fock":
+
         n0 = st.number_input(
             "Número de fotones $n$",
             min_value=0,
             max_value=N - 1,
             value=1,
-            step=1
+            step=1,
         )
 
     elif estado_campo == "Coherente":
+
         alpha = st.number_input(
             "Amplitud coherente $\\alpha$",
             value=2.0,
             step=0.1,
-            format="%.3f"
+            format="%.3f",
         )
 
     elif estado_campo == "Comprimido":
+
         r = st.number_input(
             "Parámetro de compresión $r$",
+            min_value=0.0,
             value=0.5,
             step=0.1,
-            format="%.3f"
+            format="%.3f",
         )
 
     elif estado_campo == "Coherente comprimido":
+
         alpha = st.number_input(
             "Amplitud coherente $\\alpha$",
             value=2.0,
             step=0.1,
-            format="%.3f"
+            format="%.3f",
         )
 
         r = st.number_input(
             "Parámetro de compresión $r$",
+            min_value=0.0,
             value=0.5,
             step=0.1,
-            format="%.3f"
+            format="%.3f",
         )
 
     # --------------------------------------------------------
     # 3.4 Botón de ejecución
     # --------------------------------------------------------
 
-    ejecutar = st.button("Ejecutar simulación")
+    ejecutar = st.button(
+        "Ejecutar simulación",
+        type="primary",
+        use_container_width=True,
+    )
 
-
-# ============================================================
-# 4. PANEL DERECHO: SIMULACIÓN Y RESULTADOS
-# ============================================================
 
 with col_der:
 
     if ejecutar:
 
-        # ----------------------------------------------------
-        # 4.1 Construcción del vector de tiempos
-        # ----------------------------------------------------
-
-        t = np.linspace(0, tmax, int(Nt))
+        # ====================================================
+        # 4. CONSTRUCCIÓN DEL MODELO CUÁNTICO
+        # ====================================================
 
         # ----------------------------------------------------
-        # 4.2 Construcción de operadores cuánticos
+        # 4.1 Construcción del vector temporal
         # ----------------------------------------------------
 
-        a = tensor(destroy(N), qeye(2))
-        sz = tensor(qeye(N), sigmaz())
-        sp = tensor(qeye(N), sigmap())
-        sm = tensor(qeye(N), sigmam())
+        t = np.linspace(
+            0.0,
+            float(tmax),
+            int(Nt),
+        )
 
         # ----------------------------------------------------
-        # 4.3 Hamiltoniano del modelo de Jaynes-Cummings
+        # 4.2 Construcción de los operadores cuánticos
+        # ----------------------------------------------------
+
+        a = tensor(
+            destroy(N),
+            qeye(2),
+        )
+
+        sz = tensor(
+            qeye(N),
+            sigmaz(),
+        )
+
+        sp = tensor(
+            qeye(N),
+            sigmap(),
+        )
+
+        sm = tensor(
+            qeye(N),
+            sigmam(),
+        )
+
+        # ----------------------------------------------------
+        # 4.3 Construcción del Hamiltoniano
         # ----------------------------------------------------
 
         H = (
             wc * a.dag() * a
             + 0.5 * wa * sz
-            + g * (a * sp + a.dag() * sm)
+            + g * (
+                a * sp
+                + a.dag() * sm
+            )
         )
 
         # ----------------------------------------------------
@@ -242,21 +377,40 @@ with col_der:
         # ----------------------------------------------------
 
         if estado_campo == "Vacío":
+
             psi_f = fock(N, 0)
 
         elif estado_campo == "Fock":
-            psi_f = fock(N, int(n0))
+
+            psi_f = fock(
+                N,
+                int(n0),
+            )
 
         elif estado_campo == "Coherente":
-            psi_f = coherent(N, alpha)
+
+            psi_f = coherent(
+                N,
+                alpha,
+            )
 
         elif estado_campo == "Comprimido":
-            psi_f = squeeze(N, r) * fock(N, 0)
+
+            psi_f = (
+                squeeze(N, r)
+                * fock(N, 0)
+            )
 
         elif estado_campo == "Coherente comprimido":
-            psi_f = displace(N, alpha) * squeeze(N, r) * fock(N, 0)
+
+            psi_f = (
+                displace(N, alpha)
+                * squeeze(N, r)
+                * fock(N, 0)
+            )
 
         else:
+
             psi_f = fock(N, 0)
 
         # ----------------------------------------------------
@@ -264,186 +418,423 @@ with col_der:
         # ----------------------------------------------------
 
         if estado_atomo == "Excitado":
+
             psi_a = basis(2, 0)
 
         elif estado_atomo == "Base":
+
             psi_a = basis(2, 1)
 
         elif estado_atomo == "Superposición":
+
             psi_a = (
-                np.cos(theta / 2) * basis(2, 0)
+                np.cos(theta / 2)
+                * basis(2, 0)
                 + np.exp(1j * phi)
                 * np.sin(theta / 2)
                 * basis(2, 1)
             )
 
         else:
+
             psi_a = basis(2, 0)
 
         # ----------------------------------------------------
-        # 4.6 Estado inicial total del sistema átomo-campo
+        # 4.6 Construcción del estado inicial total
         # ----------------------------------------------------
 
-        psi0 = tensor(psi_f, psi_a)
+        psi0 = tensor(
+            psi_f,
+            psi_a,
+        )
+
+
+        # ====================================================
+        # 5. EVOLUCIÓN TEMPORAL DEL SISTEMA
+        # ====================================================
 
         # ----------------------------------------------------
-        # 4.7 Definición de observables
+        # 5.1 Resolución de la ecuación de Schrödinger
         # ----------------------------------------------------
 
-        Pe_op = tensor(qeye(N), basis(2, 0) * basis(2, 0).dag())
-        Pg_op = tensor(qeye(N), basis(2, 1) * basis(2, 1).dag())
+        with st.spinner(
+            "Calculando la evolución temporal del sistema..."
+        ):
+
+            resultado = sesolve(
+                H,
+                psi0,
+                t,
+            )
+
+            estados = resultado.states
+
+
+        # ====================================================
+        # 6. CÁLCULO DE OBSERVABLES FÍSICOS
+        # ====================================================
+
+        # ----------------------------------------------------
+        # 6.1 Definición de los operadores observables
+        # ----------------------------------------------------
+
+        proyector_e = (
+            basis(2, 0)
+            * basis(2, 0).dag()
+        )
+
+        proyector_g = (
+            basis(2, 1)
+            * basis(2, 1).dag()
+        )
+
+        Pe_op = tensor(
+            qeye(N),
+            proyector_e,
+        )
+
+        Pg_op = tensor(
+            qeye(N),
+            proyector_g,
+        )
 
         n_op = a.dag() * a
+
         M_op = n_op + Pe_op
 
         # ----------------------------------------------------
-        # 4.8 Evolución temporal y cálculo de observables
+        # 6.2 Cálculo de las probabilidades atómicas
         # ----------------------------------------------------
 
-        Pe = []
-        Pg = []
-        nmean = []
+        Pe = np.real(
+            np.asarray(
+                expect(Pe_op, estados),
+                dtype=complex,
+            )
+        )
+
+        Pg = np.real(
+            np.asarray(
+                expect(Pg_op, estados),
+                dtype=complex,
+            )
+        )
+
+        # ----------------------------------------------------
+        # 6.3 Cálculo de la inversión atómica
+        # ----------------------------------------------------
+
+        W = Pe - Pg
+
+        # ----------------------------------------------------
+        # 6.4 Cálculo del número promedio de fotones
+        # ----------------------------------------------------
+
+        nmean = np.real(
+            np.asarray(
+                expect(n_op, estados),
+                dtype=complex,
+            )
+        )
+
+        # ----------------------------------------------------
+        # 6.5 Cálculo del número total de excitaciones
+        # ----------------------------------------------------
+
+        Mmean = np.real(
+            np.asarray(
+                expect(M_op, estados),
+                dtype=complex,
+            )
+        )
+
+        # ----------------------------------------------------
+        # 6.6 Cálculo de la entropía de von Neumann
+        # ----------------------------------------------------
+
         S = []
-        Mmean = []
 
-        for ti in t:
-
-            U = (-1j * H * ti).expm()
-            psi_t = U * psi0
-
-            Pe.append(expect(Pe_op, psi_t))
-            Pg.append(expect(Pg_op, psi_t))
-            nmean.append(expect(n_op, psi_t))
-            Mmean.append(expect(M_op, psi_t))
+        for psi_t in estados:
 
             rho = ket2dm(psi_t)
-            rhoA = rho.ptrace(1)
-            S.append(entropy_vn(rhoA))
 
-        Pe = np.real(np.array(Pe))
-        Pg = np.real(np.array(Pg))
-        W = Pe - Pg
-        nmean = np.real(np.array(nmean))
-        S = np.real(np.array(S))
-        Mmean = np.real(np.array(Mmean))
+            rho_atomo = rho.ptrace(1)
+
+            S.append(
+                entropy_vn(rho_atomo)
+            )
+
+        S = np.real(
+            np.asarray(S)
+        )
+
+
+        # ====================================================
+        # 7. VISUALIZACIÓN DE RESULTADOS
+        # ====================================================
 
         # ----------------------------------------------------
-        # 4.9 Construcción de gráficas
+        # 7.1 Construcción de la figura
         # ----------------------------------------------------
 
-        fig, ax = plt.subplots(3, 2, figsize=(8, 10), dpi=300)
+        fig, ax = plt.subplots(
+            3,
+            2,
+            figsize=(8, 10),
+            dpi=300,
+        )
 
-        ax[0, 0].plot(t, Pe)
+        # ----------------------------------------------------
+        # 7.2 Probabilidad del estado excitado
+        # ----------------------------------------------------
+
+        ax[0, 0].plot(
+            t,
+            Pe,
+        )
+
         ax[0, 0].set(
             xlabel=r"$t$",
             ylabel=r"$P_e(t)$",
             title="Probabilidad del estado excitado",
-            ylim=(0, 1)
+            ylim=(0, 1),
         )
 
-        ax[0, 1].plot(t, Pg)
+        # ----------------------------------------------------
+        # 7.3 Probabilidad del estado base
+        # ----------------------------------------------------
+
+        ax[0, 1].plot(
+            t,
+            Pg,
+        )
+
         ax[0, 1].set(
             xlabel=r"$t$",
             ylabel=r"$P_g(t)$",
             title="Probabilidad del estado base",
-            ylim=(0, 1)
+            ylim=(0, 1),
         )
 
-        ax[1, 0].plot(t, W)
+        # ----------------------------------------------------
+        # 7.4 Inversión atómica
+        # ----------------------------------------------------
+
+        ax[1, 0].plot(
+            t,
+            W,
+        )
+
         ax[1, 0].set(
             xlabel=r"$t$",
             ylabel=r"$W(t)$",
             title="Inversión atómica",
-            ylim=(-1, 1)
+            ylim=(-1, 1),
         )
-        ax[1, 0].set_yticks(np.arange(-1, 1.1, 0.5))
 
-        ax[1, 1].plot(t, nmean)
+        ax[1, 0].set_yticks(
+            np.arange(
+                -1,
+                1.1,
+                0.5,
+            )
+        )
+
+        # ----------------------------------------------------
+        # 7.5 Número promedio de fotones
+        # ----------------------------------------------------
+
+        ax[1, 1].plot(
+            t,
+            nmean,
+        )
+
         ax[1, 1].set(
             xlabel=r"$t$",
             ylabel=r"$\langle n(t)\rangle$",
-            title="Número promedio de fotones"
+            title="Número promedio de fotones",
         )
 
-        ax[2, 0].plot(t, S)
+        # ----------------------------------------------------
+        # 7.6 Entropía de von Neumann
+        # ----------------------------------------------------
+
+        ax[2, 0].plot(
+            t,
+            S,
+        )
+
         ax[2, 0].set(
             xlabel=r"$t$",
             ylabel=r"$S(t)$",
             title="Entropía de von Neumann",
-            ylim=(0, 1)
+            ylim=(0, 1),
         )
 
-        valor_M = np.mean(Mmean)
+        # ----------------------------------------------------
+        # 7.7 Número total de excitaciones
+        # ----------------------------------------------------
 
-        ax[2, 1].plot(t, Mmean)
+        valor_M = float(
+            np.mean(Mmean)
+        )
+
+        margen_M = max(
+            0.5,
+            float(
+                np.max(
+                    np.abs(
+                        Mmean - valor_M
+                    )
+                )
+            )
+            + 0.1,
+        )
+
+        ax[2, 1].plot(
+            t,
+            Mmean,
+        )
+
         ax[2, 1].set(
             xlabel=r"$t$",
             ylabel=r"$\langle M(t)\rangle$",
             title="Número total de excitaciones",
-            ylim=(valor_M - 0.5, valor_M + 0.5)
+            ylim=(
+                valor_M - margen_M,
+                valor_M + margen_M,
+            ),
         )
 
         # ----------------------------------------------------
-        # 4.10 Formato general de las gráficas
+        # 7.8 Formato general de las gráficas
         # ----------------------------------------------------
 
         for fila in ax:
+
             for eje in fila:
-                eje.tick_params(axis="both", labelsize=9)
+
+                eje.tick_params(
+                    axis="both",
+                    labelsize=9,
+                )
+
                 eje.xaxis.label.set_size(11)
                 eje.yaxis.label.set_size(11)
                 eje.title.set_size(12)
-                eje.grid(True, alpha=0.5)
-                eje.spines["top"].set_visible(False)
-                eje.spines["right"].set_visible(False)
+
+                eje.grid(
+                    True,
+                    alpha=0.5,
+                )
+
+                eje.spines[
+                    "top"
+                ].set_visible(False)
+
+                eje.spines[
+                    "right"
+                ].set_visible(False)
 
         fig.suptitle(
             "Simulación del modelo de Jaynes-Cummings",
-            fontsize=16
+            fontsize=16,
         )
 
-        fig.tight_layout(rect=[0, 0, 1, 0.98])
+        fig.tight_layout(
+            rect=[
+                0,
+                0,
+                1,
+                0.98,
+            ]
+        )
 
         # ----------------------------------------------------
-        # 4.11 Visualización de la figura en la interfaz
+        # 7.9 Presentación de la figura en la interfaz
         # ----------------------------------------------------
 
-        st.pyplot(fig)
+        st.pyplot(
+            fig,
+            use_container_width=True,
+        )
+
+        st.success(
+            "La simulación se realizó correctamente."
+        )
+
+
+        # ====================================================
+        # 8. EXPORTACIÓN DE RESULTADOS
+        # ====================================================
 
         # ----------------------------------------------------
-        # 4.12 Exportación de resultados en PDF y PNG
+        # 8.1 Creación de los archivos en memoria
         # ----------------------------------------------------
 
         pdf_buffer = BytesIO()
         png_buffer = BytesIO()
 
-        fig.savefig(pdf_buffer, format="pdf", dpi=300)
-        fig.savefig(png_buffer, format="png", dpi=300)
+        fig.savefig(
+            pdf_buffer,
+            format="pdf",
+            dpi=300,
+            bbox_inches="tight",
+        )
+
+        fig.savefig(
+            png_buffer,
+            format="png",
+            dpi=300,
+            bbox_inches="tight",
+        )
 
         pdf_buffer.seek(0)
         png_buffer.seek(0)
 
-        st.subheader("Exportar figura")
+        # ----------------------------------------------------
+        # 8.2 Presentación de las opciones de descarga
+        # ----------------------------------------------------
+
+        st.subheader(
+            "Exportar resultados"
+        )
 
         col_pdf, col_png = st.columns(2)
 
+        # ----------------------------------------------------
+        # 8.3 Descarga de la figura en formato PDF
+        # ----------------------------------------------------
+
         with col_pdf:
+
             st.download_button(
                 label="Descargar figura en PDF",
-                data=pdf_buffer,
+                data=pdf_buffer.getvalue(),
                 file_name="Resultados_JC.pdf",
-                mime="application/pdf"
+                mime="application/pdf",
+                use_container_width=True,
             )
 
+        # ----------------------------------------------------
+        # 8.4 Descarga de la figura en formato PNG
+        # ----------------------------------------------------
+
         with col_png:
+
             st.download_button(
                 label="Descargar figura en PNG",
-                data=png_buffer,
+                data=png_buffer.getvalue(),
                 file_name="Resultados_JC.png",
-                mime="image/png"
+                mime="image/png",
+                use_container_width=True,
             )
 
         plt.close(fig)
 
     else:
-        st.info("Configure los parámetros y presione **Ejecutar simulación**.")
+
+        st.info(
+            "Configure los parámetros y presione "
+            "**Ejecutar simulación**."
+        )
