@@ -115,8 +115,7 @@ $\hbar=1$, está dado por:
 
     st.info(
         "El simulador permite estudiar la dinámica temporal del sistema "
-        "para diversos estados iniciales del átomo y del campo. También"
-        "permite analizar las probabilidades atómicas, la inversión "
+        "para diversos estados iniciales del átomo y del campo. También permite analizar las probabilidades atómicas, la inversión "
         "atómica, el número promedio de fotones, la entropía de "
         "von Neumann y el número total de excitaciones."
     )
